@@ -182,7 +182,7 @@ func (c *Command) Run() *Process {
 			if stat, ok := exiterr.Sys().(syscall.WaitStatus); ok {
 				p.ExitStatus = int(stat.ExitStatus())
 				if Panic {
-					panic(p)
+					panic(fmt.Sprintf("Commadn execution failed\nCommand: %s\nError: %v\nExit status:%v", c.ToString(), p.Stderr, p.ExitStatus))
 				}
 			}
 		} else {
