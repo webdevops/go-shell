@@ -19,7 +19,7 @@ while remaining idiomatic to Go.
 ```go
 import (
   "fmt"
-  "github.com/progrium/go-shell"
+  "github.com/webdevops/go-shell"
 )
 
 var (
@@ -40,7 +40,7 @@ func main() {
 ```go
 import (
   "fmt"
-  "github.com/progrium/go-shell"
+  "github.com/webdevops/go-shell"
 )
 
 func main() {
@@ -49,7 +49,7 @@ func main() {
 ```
 
 ```go
-import "github.com/progrium/go-shell"
+import "github.com/webdevops/go-shell"
 
 var (
   echo = shell.Cmd("echo").OutputFn()
