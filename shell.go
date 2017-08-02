@@ -137,6 +137,18 @@ func (c *Command) shellCmd(quote bool) string {
 	return strings.Join(quoted, " ")
 }
 
+func (c *Command) ToString() string {
+	var ret []string
+
+	if c.in != nil {
+		ret = append(ret, c.in.shellCmd(false))
+	}
+
+	ret = append(ret, c.shellCmd(false))
+
+	return strings.Join(ret, " | ")
+}
+
 func (c *Command) Run() *Process {
 	if Trace {
 		fmt.Fprintln(os.Stderr, TracePrefix, c.shellCmd(false))
