@@ -44,7 +44,13 @@ import (
 )
 
 func main() {
-  fmt.Println(shell.Cmd("echo", "foobar").Pipe("wc", "-c").Pipe("awk", "'{print $1}'").Run())
+  cmd := shell.Cmd("echo", "foobar").Pipe("wc", "-c").Pipe("awk", "'{print $1}'")
+  
+  // -> wc -c | awk '{print $1}'
+  fmt.Println(cmd.ToString())
+  
+  // -> 7 
+  fmt.Println(cmd.Run())
 }
 ```
 
