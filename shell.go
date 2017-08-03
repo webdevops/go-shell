@@ -141,7 +141,7 @@ func (c *Command) ToString() string {
 	var ret []string
 
 	if c.in != nil {
-		ret = append(ret, c.in.shellCmd(false))
+		ret = append(ret, c.in.ToString())
 	}
 
 	ret = append(ret, c.shellCmd(false))

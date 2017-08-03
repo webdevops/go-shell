@@ -121,3 +121,17 @@ func TestCmdOutputFn(t *testing.T) {
 		t.Fatal("output not expected:", out)
 	}
 }
+
+func TestToString(t *testing.T) {
+	var command string
+
+	command = Cmd("echo foobar").Pipe("wc -c").ToString()
+	if command != "echo foobar | wc -c" {
+		t.Fatal("output not expected:", command)
+	}
+
+	command = Cmd("echo foobar").Pipe("wc -c").Pipe("wc -l").ToString()
+	if command != "echo foobar | wc -c | wc -l" {
+		t.Fatal("output not expected:", command)
+	}
+}
