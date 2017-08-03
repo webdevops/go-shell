@@ -155,6 +155,7 @@ func (c *Command) Run() *Process {
 	}
 	cmd := exec.Command(Shell[0], append(Shell[1:], c.shellCmd(false))...)
 	p := new(Process)
+	p.Command = c
 	if c.in != nil {
 		cmd.Stdin = c.in.Run()
 	} else {
@@ -203,6 +204,7 @@ type Process struct {
 	Stderr     *bytes.Buffer
 	Stdin      io.WriteCloser
 	ExitStatus int
+	Command    *Command
 }
 
 func (p *Process) String() string {
