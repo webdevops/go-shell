@@ -42,6 +42,13 @@ func Quote(arg string) string {
 	return fmt.Sprintf("'%s'", strings.Replace(arg, "'", "'\\''", -1))
 }
 
+func QuoteValues(arg ...string) []string {
+	for i, v := range arg {
+		arg[i] = Quote(v)
+	}
+	return arg
+}
+
 func ErrExit() {
 	if p, ok := recover().(*Process); p != nil {
 		if !ok {
