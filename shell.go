@@ -14,6 +14,7 @@ import (
 var (
 	Shell       = []string{"/bin/sh", "-c"}
 	Panic       = true
+	VerboseFunc = func(c *Command) {}
 	Trace       = false
 	TracePrefix = "+"
 
@@ -157,6 +158,11 @@ func (c *Command) ToString() string {
 }
 
 func (c *Command) Run() *Process {
+	VerboseFunc(c)
+	return c.execute()
+}
+
+func (c *Command) execute() *Process {
 	if Trace {
 		fmt.Fprintln(os.Stderr, TracePrefix, c.shellCmd(false))
 	}
@@ -164,7 +170,7 @@ func (c *Command) Run() *Process {
 	p := new(Process)
 	p.Command = c
 	if c.in != nil {
-		cmd.Stdin = c.in.Run()
+		cmd.Stdin = c.in.execute()
 	} else {
 		stdin, err := cmd.StdinPipe()
 		assert(err)
