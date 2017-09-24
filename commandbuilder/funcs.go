@@ -1,4 +1,4 @@
-package shell
+package commandbuilder
 
 func CommandInterfaceBuilder(command string, args ...string) []interface{} {
 	cmd := []string{

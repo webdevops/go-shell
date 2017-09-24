@@ -1,8 +1,9 @@
-package shell
+package commandbuilder
 
 import (
 	"strings"
 	"fmt"
+	"github.com/webdevops/go-shell"
 )
 
 var (
@@ -53,7 +54,7 @@ func (connection *Connection) RawCommandBuilder(command string, args ...string) 
 }
 
 func (connection *Connection) ShellCommandBuilder(args ...string) []interface{} {
-	args = QuoteValues(args...)
+	args = shell.QuoteValues(args...)
 	return connection.RawShellCommandBuilder(args...)
 }
 
@@ -70,10 +71,10 @@ func (connection *Connection) RawShellCommandBuilder(args ...string) []interface
 
 	if connection.WorkDir != "" {
 		// prepend cd in front of command to change work dir
-		inlineCommand = fmt.Sprintf("cd %s ; %s", Quote(connection.WorkDir), inlineCommand)
+		inlineCommand = fmt.Sprintf("cd %s ; %s", shell.Quote(connection.WorkDir), inlineCommand)
 	}
 
-	inlineCommand = Quote(inlineCommand)
+	inlineCommand = shell.Quote(inlineCommand)
 
 	switch connection.GetType() {
 	case "local":

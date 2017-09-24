@@ -1,8 +1,9 @@
-package shell
+package commandbuilder
 
 import (
 	"fmt"
 	"strings"
+	"github.com/webdevops/go-shell"
 )
 
 func (connection *Connection) SshCommandBuilder(command string, args ...string) []interface{} {
@@ -10,7 +11,7 @@ func (connection *Connection) SshCommandBuilder(command string, args ...string) 
 	for _, val := range args {
 		remoteCmdParts = append(remoteCmdParts, val)
 	}
-	remoteCmd := Quote(strings.Join(remoteCmdParts, " "))
+	remoteCmd := shell.Quote(strings.Join(remoteCmdParts, " "))
 
 	sshArgs := append(ConnectionSshArguments, connection.SshConnectionHostnameString(), "--", remoteCmd)
 

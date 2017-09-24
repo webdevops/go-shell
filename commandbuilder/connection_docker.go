@@ -1,8 +1,9 @@
-package shell
+package commandbuilder
 
 import (
 	"strings"
 	"fmt"
+	"github.com/webdevops/go-shell"
 )
 
 var containerCache = map[string]string{}
@@ -41,7 +42,7 @@ func (connection *Connection) DockerGetContainerId() string {
 		containerName := strings.TrimPrefix(connection.Docker, "compose:")
 
 		// query container id from docker-compose
-		cmd := Cmd(connectionClone.CommandBuilder("docker-compose", "ps", "-q", containerName)...).Run()
+		cmd := shell.Cmd(connectionClone.CommandBuilder("docker-compose", "ps", "-q", containerName)...).Run()
 		containerId := strings.TrimSpace(cmd.Stdout.String())
 
 		if containerId == "" {
