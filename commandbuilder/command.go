@@ -20,6 +20,11 @@ type Connection struct {
 	WorkDir string
 }
 
+func (connection *Connection) Clone() (Connection) {
+	clone := *connection
+	return clone
+}
+
 func (connection *Connection) CommandBuilder(command string, args ...string) []interface{} {
 	//args = QuoteValues(args...)
 
