@@ -9,7 +9,9 @@ import (
 var containerCache = map[string]string{}
 
 func (connection *Connection) DockerCommandBuilder(cmd string, args ...string) []interface{} {
-	dockerArgs := append(ConnectionDockerArguments, connection.DockerGetContainerId(), cmd)
+	containerName := connection.Docker
+
+	dockerArgs := append(ConnectionDockerArguments, connection.DockerGetContainerId(containerName), cmd)
 	dockerArgs = append(dockerArgs, args...)
 
 	if connection.GetType() == "ssh+docker" {
@@ -21,15 +23,15 @@ func (connection *Connection) DockerCommandBuilder(cmd string, args ...string) [
 	}
 }
 
-func (connection *Connection) DockerGetContainerId() string {
+func (connection *Connection) DockerGetContainerId(containerName string) string {
 	var container string
 
-	cacheKey := fmt.Sprintf("%s:%s", connection.Hostname, connection.Docker)
+	cacheKey := fmt.Sprintf("%s:%s", connection.Hostname, containerName)
 
 	if val, ok := containerCache[cacheKey]; ok {
 		// use cached container id
 		container = val
-	} else if strings.HasPrefix(connection.Docker, "compose:") {
+	} else if strings.HasPrefix(containerName, "compose:") {
 		// docker-compose container
 		// -> trying to get id from docker-compose
 
@@ -39,10 +41,10 @@ func (connection *Connection) DockerGetContainerId() string {
 		connectionClone.Type  = "auto"
 
 		// extract docker-compose container name
-		containerName := strings.TrimPrefix(connection.Docker, "compose:")
+		composeContainerName := strings.TrimPrefix(containerName, "compose:")
 
 		// query container id from docker-compose
-		cmd := shell.Cmd(connectionClone.CommandBuilder("docker-compose", "ps", "-q", containerName)...).Run()
+		cmd := shell.Cmd(connectionClone.CommandBuilder("docker-compose", "ps", "-q", composeContainerName)...).Run()
 		containerId := strings.TrimSpace(cmd.Stdout.String())
 
 		if containerId == "" {
@@ -52,7 +54,7 @@ func (connection *Connection) DockerGetContainerId() string {
 		container = containerId
 	} else {
 		// normal docker
-		container = connection.Docker
+		container = containerName
 	}
 
 	// cache value
