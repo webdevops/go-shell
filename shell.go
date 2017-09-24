@@ -29,6 +29,23 @@ func assert(err error) {
 	}
 }
 
+func NewCmd(command string, args ...string) *Command {
+	cmd := []string{
+		command,
+	}
+
+	for _, val := range args {
+		cmd = append(cmd, val)
+	}
+
+	shellCmd := make([]interface{}, len(cmd))
+	for i, v := range cmd {
+		shellCmd[i] = v
+	}
+
+	return Cmd(shellCmd...)
+}
+
 func Path(parts ...string) string {
 	return filepath.Join(parts...)
 }
