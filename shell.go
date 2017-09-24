@@ -159,10 +159,15 @@ func (c *Command) ToString() string {
 
 func (c *Command) Run() *Process {
 	VerboseFunc(c)
-	return c.execute()
+	return c.execute(false)
 }
 
-func (c *Command) execute() *Process {
+func (c *Command) RunInteractive() *Process {
+	VerboseFunc(c)
+	return c.execute(true)
+}
+
+func (c *Command) execute(interactive bool) *Process {
 	if Trace {
 		fmt.Fprintln(os.Stderr, TracePrefix, c.shellCmd(false))
 	}
@@ -170,26 +175,33 @@ func (c *Command) execute() *Process {
 	p := new(Process)
 	p.Command = c
 	if c.in != nil {
-		cmd.Stdin = c.in.execute()
+		cmd.Stdin = c.in.execute(false)
 	} else {
 		stdin, err := cmd.StdinPipe()
 		assert(err)
 		p.Stdin = stdin
 	}
-	var stdout bytes.Buffer
-	if Tee != nil {
-		cmd.Stdout = io.MultiWriter(&stdout, Tee)
+
+	if interactive {
+		cmd.Stdout = os.Stdout
+		cmd.Stdin = os.Stdin
+		cmd.Stderr = os.Stderr
 	} else {
-		cmd.Stdout = &stdout
+		var stdout bytes.Buffer
+		if Tee != nil {
+			cmd.Stdout = io.MultiWriter(&stdout, Tee)
+		} else {
+			cmd.Stdout = &stdout
+		}
+		p.Stdout = &stdout
+		var stderr bytes.Buffer
+		if Tee != nil {
+			cmd.Stderr = io.MultiWriter(&stderr, Tee)
+		} else {
+			cmd.Stderr = &stderr
+		}
+		p.Stderr = &stderr
 	}
-	p.Stdout = &stdout
-	var stderr bytes.Buffer
-	if Tee != nil {
-		cmd.Stderr = io.MultiWriter(&stderr, Tee)
-	} else {
-		cmd.Stderr = &stderr
-	}
-	p.Stderr = &stderr
 	err := cmd.Run()
 	if err != nil {
 		if exiterr, ok := err.(*exec.ExitError); ok {
