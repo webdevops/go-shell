@@ -146,5 +146,5 @@ func (connection *Connection) String() string {
 	default:
 	}
 
-	return fmt.Sprintf("Exec[%s]", strings.Join(parts[:]," "))
+	return fmt.Sprintf("Connection[%s]", strings.Join(parts[:]," "))
 }
