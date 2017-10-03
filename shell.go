@@ -12,9 +12,13 @@ import (
 )
 
 var (
-	Shell       = []string{"/bin/sh", "-o", "pipefail", "-o", "errexit", "-o", "errtrace", "-c"}
+	ShellList   = map[string][]string{
+		"bash": {"/bin/bash",  "-o", "errexit", "-o", "pipefail", "-c"},
+		"sh":   {"/bin/sh",  "-o", "errexit", "-c"},
+	}
+	Shell       = []string{"/bin/sh",  "-o", "errexit", "-c"}
 	Panic       = true
-	ErrorFunc   = errorFunc
+	ErrorFunc   = func(c *Command, p *Process) {}
 	VerboseFunc = func(c *Command) {}
 	Trace       = false
 	TracePrefix = "+"
@@ -27,6 +31,14 @@ var Tee io.Writer
 func assert(err error) {
 	if err != nil {
 		panic(err)
+	}
+}
+
+func SetDefaultShell(shell string) {
+	if val, ok := ShellList[shell]; ok {
+		Shell = val
+	} else {
+		panic(fmt.Sprintf("Shell %v is not supported"))
 	}
 }
 
@@ -252,7 +264,15 @@ type Process struct {
 }
 
 func (p *Process) String() string {
-	return fmt.Sprintf("%s --> exit code %v", p.Command.ToString(), p.ExitStatus)
+	stderr := strings.Replace(p.Stderr.String(), "\n", "\n           ", -1)
+
+	msg := "go-shell command failed\n"
+	msg += fmt.Sprintf("COMMAND:   %v\n", p.Command.ToString())
+	msg += fmt.Sprintf("EXIT CODE: %v\n", p.ExitStatus)
+	msg += fmt.Sprintf("STDERR:    %v\n", stderr)
+	msg += "\n"
+
+	return msg
 }
 
 func (p *Process) Bytes() []byte {
@@ -274,10 +294,4 @@ func (p *Process) Write(b []byte) (int, error) {
 
 func Run(cmd ...interface{}) *Process {
 	return Cmd(cmd...).Run()
-}
-
-
-func errorFunc(c *Command, p *Process) {
-	fmt.Println(fmt.Sprintf("[SHELL-ERROR] %s", p.Stderr.String()))
-	fmt.Println(fmt.Sprintf("              exit code: %v", p.ExitStatus))
 }

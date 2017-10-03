@@ -79,6 +79,9 @@ func (connection *Connection) RawShellCommandBuilder(args ...string) []interface
 		inlineCommand = fmt.Sprintf("cd %s ; %s", shell.Quote(connection.WorkDir), inlineCommand)
 	}
 
+	// pipefail emulation
+	//inlineCommand += `;echo "${PIPESTATUS[@]}"; for x in "${PIPESTATUS[@]}";do if [ "$x" -ne 0 ];then exit "$x";fi;done;`
+
 	inlineCommand = shell.Quote(inlineCommand)
 
 
