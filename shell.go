@@ -12,16 +12,29 @@ import (
 )
 
 var (
+	// Available shell list
 	ShellList   = map[string][]string{
 		"zsh":  {"/bin/zsh",  "-o", "errexit", "-o", "pipefail", "-c"},
 		"bash": {"/bin/bash",  "-o", "errexit", "-o", "pipefail", "-c"},
 		"sh":   {"/bin/sh",  "-o", "errexit", "-c"},
 	}
+
+	// Shell for command invocation
 	Shell       = []string{"/bin/sh",  "-o", "errexit", "-c"}
+
+	// Specifies if panic is thrown if command fails
 	Panic       = true
+
+	// Error func hook if command fails
 	ErrorFunc   = func(c *Command, p *Process) {}
+
+	// Verbose func hook before command is executed
 	VerboseFunc = func(c *Command) {}
+
+	// Trace command for each executed
 	Trace       = false
+
+	// Trae output prefix
 	TracePrefix = "+"
 
 	exit = os.Exit
