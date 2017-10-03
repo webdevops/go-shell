@@ -81,15 +81,16 @@ func (connection *Connection) RawShellCommandBuilder(args ...string) []interface
 
 	inlineCommand = shell.Quote(inlineCommand)
 
+
 	switch connection.GetType() {
 	case "local":
-		ret = connection.LocalCommandBuilder("/bin/sh", "-c", inlineCommand)
+		ret = connection.LocalCommandBuilder(shell.Shell[0], append(shell.Shell[1:], inlineCommand)...)
 	case "ssh":
-		ret = connection.SshCommandBuilder("/bin/sh", "-c", inlineCommand)
+		ret = connection.SshCommandBuilder(shell.Shell[0], append(shell.Shell[1:], inlineCommand)...)
 	case "ssh+docker":
 		fallthrough
 	case "docker":
-		ret = connection.DockerCommandBuilder("/bin/sh", "-c", inlineCommand)
+		ret = connection.DockerCommandBuilder(shell.Shell[0], append(shell.Shell[1:], inlineCommand)...)
 	default:
 		panic(connection)
 	}

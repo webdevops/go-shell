@@ -12,8 +12,9 @@ import (
 )
 
 var (
-	Shell       = []string{"/bin/sh", "-c"}
+	Shell       = []string{"/bin/sh", "-o", "pipefail", "-o", "errexit", "-o", "errtrace", "-c"}
 	Panic       = true
+	ErrorFunc   = errorFunc
 	VerboseFunc = func(c *Command) {}
 	Trace       = false
 	TracePrefix = "+"
@@ -224,6 +225,7 @@ func (c *Command) execute(interactive bool) *Process {
 		if exiterr, ok := err.(*exec.ExitError); ok {
 			if stat, ok := exiterr.Sys().(syscall.WaitStatus); ok {
 				p.ExitStatus = int(stat.ExitStatus())
+				ErrorFunc(c, p)
 				if Panic {
 					panic(p)
 				}
@@ -250,7 +252,7 @@ type Process struct {
 }
 
 func (p *Process) String() string {
-	return strings.Trim(p.Stdout.String(), "\n")
+	return fmt.Sprintf("%s --> exit code %v", p.Command.ToString(), p.ExitStatus)
 }
 
 func (p *Process) Bytes() []byte {
@@ -272,4 +274,10 @@ func (p *Process) Write(b []byte) (int, error) {
 
 func Run(cmd ...interface{}) *Process {
 	return Cmd(cmd...).Run()
+}
+
+
+func errorFunc(c *Command, p *Process) {
+	fmt.Println(fmt.Sprintf("[SHELL-ERROR] %s", p.Stderr.String()))
+	fmt.Println(fmt.Sprintf("              exit code: %v", p.ExitStatus))
 }
