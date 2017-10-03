@@ -7,30 +7,52 @@ import (
 )
 
 var (
+	// Default SSH options
 	ConnectionSshArguments = []string{"-oBatchMode=yes -oPasswordAuthentication=no"}
+
+	// Default Docker options
 	ConnectionDockerArguments = []string{"exec", "-i"}
 )
 
 type Connection struct {
+	// Type of command
+	// local: for local execution
+	// ssh: for execution using ssh
+	// docker: for execution using a docker container
 	Type string
+
+	// Hostname for ssh execution
 	Hostname string
+
+	// Username for ssh execution
 	User string
+
+	// Password for ssh execution
 	Password string
+
+	// Docker container ID for execution inside docker container
+	// compose:name for automatic docker-compose lookup (docker-compose.yml must be in working directory)
 	Docker string
+
+	// Working directory for eg. ssh
 	WorkDir string
 }
 
+// Clone connection
 func (connection *Connection) Clone() (Connection) {
 	clone := *connection
 	return clone
 }
 
+// Build command for shell.Cmd usage
+// will automatically check if SSH'ed or docker exec will be used
 func (connection *Connection) CommandBuilder(command string, args ...string) []interface{} {
-	//args = QuoteValues(args...)
-
+	args = shell.QuoteValues(args...)
 	return connection.RawCommandBuilder(command, args...)
 }
 
+// Build raw command (not automatically quoted) for shell.Cmd usage
+// will automatically check if SSH'ed or docker exec will be used
 func (connection *Connection) RawCommandBuilder(command string, args ...string) []interface{} {
 	var ret []interface{}
 
@@ -58,11 +80,16 @@ func (connection *Connection) RawCommandBuilder(command string, args ...string) 
 	return ret
 }
 
+// Run command using an shell (eg. for running pipes or multiple commands)
+// will automatically check if SSH'ed or docker exec will be used
 func (connection *Connection) ShellCommandBuilder(args ...string) []interface{} {
 	args = shell.QuoteValues(args...)
 	return connection.RawShellCommandBuilder(args...)
 }
 
+
+// Run raw command (not automatically quoted) using an shell (eg. for running pipes or multiple commands)
+// will automatically check if SSH'ed or docker exec will be used
 func (connection *Connection) RawShellCommandBuilder(args ...string) []interface{} {
 	var ret []interface{}
 
@@ -101,6 +128,7 @@ func (connection *Connection) RawShellCommandBuilder(args ...string) []interface
 	return ret
 }
 
+// Return type of connection, will guess type based on settings if type is empty
 func (connection *Connection) GetType() string {
 	var connType string
 
@@ -133,6 +161,7 @@ func (connection *Connection) GetType() string {
 	return connType
 }
 
+// Create human readable string representation of command
 func (connection *Connection) String() string {
 	var parts []string
 

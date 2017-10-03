@@ -8,6 +8,7 @@ import (
 
 var containerCache = map[string]string{}
 
+// Create dockerized command
 func (connection *Connection) DockerCommandBuilder(cmd string, args ...string) []interface{} {
 	containerName := connection.Docker
 
@@ -23,6 +24,7 @@ func (connection *Connection) DockerCommandBuilder(cmd string, args ...string) [
 	}
 }
 
+// Detect docker container id with docker-compose support
 func (connection *Connection) DockerGetContainerId(containerName string) string {
 	var container string
 

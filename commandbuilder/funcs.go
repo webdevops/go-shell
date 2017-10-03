@@ -1,5 +1,6 @@
 package commandbuilder
 
+// Convert string arguments to interfaces for shell.Cmd usage
 func CommandInterfaceBuilder(command string, args ...string) []interface{} {
 	cmd := []string{
 		command,
