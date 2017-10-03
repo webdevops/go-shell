@@ -13,6 +13,7 @@ import (
 
 var (
 	ShellList   = map[string][]string{
+		"zsh":  {"/bin/zsh",  "-o", "errexit", "-o", "pipefail", "-c"},
 		"bash": {"/bin/bash",  "-o", "errexit", "-o", "pipefail", "-c"},
 		"sh":   {"/bin/sh",  "-o", "errexit", "-c"},
 	}
@@ -34,6 +35,8 @@ func assert(err error) {
 	}
 }
 
+// Sets the default shell (eg. "sh" or "bash") for command execution
+// and usage in ShellCommandBuilder
 func SetDefaultShell(shell string) {
 	if val, ok := ShellList[shell]; ok {
 		Shell = val
@@ -42,6 +45,7 @@ func SetDefaultShell(shell string) {
 	}
 }
 
+// Create a new shell command instance using strings as parameters
 func NewCmd(command string, args ...string) *Command {
 	cmd := []string{
 		command,
@@ -69,10 +73,12 @@ func PathTemplate(parts ...string) func(...interface{}) string {
 	}
 }
 
+// Quote shell arguments as string
 func Quote(arg string) string {
 	return fmt.Sprintf("'%s'", strings.Replace(arg, "'", "'\\''", -1))
 }
 
+// Quote multiple shell arguments as string list
 func QuoteValues(arg ...string) []string {
 	for i, v := range arg {
 		arg[i] = Quote(v)
@@ -140,6 +146,7 @@ func (c *Command) ErrFn() func(...interface{}) error {
 	}
 }
 
+// Add command as pipe to an existing command
 func (c *Command) Pipe(cmd ...interface{}) *Command {
 	return Cmd(append(cmd, c)...)
 }
@@ -175,6 +182,7 @@ func (c *Command) shellCmd(quote bool) string {
 	return strings.Join(quoted, " ")
 }
 
+// Create human readable command as string
 func (c *Command) ToString() string {
 	var ret []string
 
@@ -187,16 +195,19 @@ func (c *Command) ToString() string {
 	return strings.Join(ret, " | ")
 }
 
+// Run command
 func (c *Command) Run() *Process {
 	VerboseFunc(c)
 	return c.execute(false)
 }
 
+// Run command in interactive mode
 func (c *Command) RunInteractive() *Process {
 	VerboseFunc(c)
 	return c.execute(true)
 }
 
+// Execute command
 func (c *Command) execute(interactive bool) *Process {
 	if Trace {
 		fmt.Fprintln(os.Stderr, TracePrefix, c.shellCmd(false))
@@ -249,6 +260,7 @@ func (c *Command) execute(interactive bool) *Process {
 	return p
 }
 
+// Create new Command instance
 func Cmd(cmd ...interface{}) *Command {
 	c := new(Command)
 	c.addArgs(cmd...)
@@ -263,10 +275,18 @@ type Process struct {
 	Command    *Command
 }
 
+// Create human readable representation of process status
 func (p *Process) String() string {
+	msg := ""
+
 	stderr := strings.Replace(p.Stderr.String(), "\n", "\n           ", -1)
 
-	msg := "go-shell command failed\n"
+	if p.ExitStatus == 0 {
+		msg += "go-shell command executed successfully\n"
+	} else {
+		msg += "go-shell command failed\n"
+	}
+
 	msg += fmt.Sprintf("COMMAND:   %v\n", p.Command.ToString())
 	msg += fmt.Sprintf("EXIT CODE: %v\n", p.ExitStatus)
 	msg += fmt.Sprintf("STDERR:    %v\n", stderr)
