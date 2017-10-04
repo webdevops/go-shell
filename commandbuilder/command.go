@@ -36,12 +36,49 @@ type Connection struct {
 
 	// Working directory for eg. ssh
 	WorkDir string
+
+	// Environment variables
+	Environment map[string]string
 }
 
 // Clone connection
 func (connection *Connection) Clone() (Connection) {
 	clone := *connection
 	return clone
+}
+
+func (connection *Connection) IsEmpty() bool {
+	ret := true
+
+	if connection.Type != "" {
+		ret = false
+	}
+
+	if connection.Hostname != "" {
+		ret = false
+	}
+
+	if connection.User != "" {
+		ret = false
+	}
+
+	if connection.Password != "" {
+		ret = false
+	}
+
+	if connection.Docker != "" {
+		ret = false
+	}
+
+	if connection.WorkDir != "" {
+		ret = false
+	}
+
+	if len(connection.Environment) > 0 {
+		ret = false
+	}
+
+	return ret
 }
 
 // Build command for shell.Cmd usage
@@ -58,7 +95,7 @@ func (connection *Connection) RawCommandBuilder(command string, args ...string) 
 
 	// if workdir is set
 	// use shell'ed command builder
-	if connection.WorkDir != "" {
+	if connection.WorkDir != "" || len(connection.Environment) >= 1 {
 		shellArgs := []string{command}
 		shellArgs = append(shellArgs, args...)
 		return connection.RawShellCommandBuilder(shellArgs...)
@@ -103,7 +140,11 @@ func (connection *Connection) RawShellCommandBuilder(args ...string) []interface
 
 	if connection.WorkDir != "" {
 		// prepend cd in front of command to change work dir
-		inlineCommand = fmt.Sprintf("cd %s ; %s", shell.Quote(connection.WorkDir), inlineCommand)
+		inlineCommand = fmt.Sprintf("cd %s;%s", shell.Quote(connection.WorkDir), inlineCommand)
+	}
+
+	for envName, envValue := range connection.Environment {
+		inlineCommand = fmt.Sprintf("export %s=%s;%s", envName, shell.Quote(envValue), inlineCommand)
 	}
 
 	// pipefail emulation
