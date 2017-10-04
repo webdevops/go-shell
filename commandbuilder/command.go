@@ -44,6 +44,11 @@ type Connection struct {
 // Clone connection
 func (connection *Connection) Clone() (Connection) {
 	clone := *connection
+
+	if clone.Environment == nil {
+		clone.Environment = map[string]string{}
+	}
+
 	return clone
 }
 
