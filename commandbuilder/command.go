@@ -143,8 +143,13 @@ func (connection *Connection) RawShellCommandBuilder(args ...string) []interface
 		inlineCommand = fmt.Sprintf("cd %s;%s", shell.Quote(connection.WorkDir), inlineCommand)
 	}
 
-	for envName, envValue := range connection.Environment {
-		inlineCommand = fmt.Sprintf("export %s=%s;%s", envName, shell.Quote(envValue), inlineCommand)
+	if len(connection.Environment) > 0 {
+		envList := []string{}
+		for envName, envValue := range connection.Environment {
+			envList = append(envList, fmt.Sprintf("%s=%s", envName, shell.Quote(envValue)))
+		}
+		fmt.Println(envList)
+		inlineCommand = fmt.Sprintf("export %s;%s", strings.Join(envList, " "), inlineCommand)
 	}
 
 	// pipefail emulation
