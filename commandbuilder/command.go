@@ -153,7 +153,6 @@ func (connection *Connection) RawShellCommandBuilder(args ...string) []interface
 		for envName, envValue := range connection.Environment {
 			envList = append(envList, fmt.Sprintf("%s=%s", envName, shell.Quote(envValue)))
 		}
-		fmt.Println(envList)
 		inlineCommand = fmt.Sprintf("export %s;%s", strings.Join(envList, " "), inlineCommand)
 	}
 
