@@ -3,6 +3,7 @@ package commandbuilder
 import (
 	"strings"
 	"fmt"
+	"bufio"
 	"github.com/webdevops/go-shell"
 )
 
@@ -38,7 +39,7 @@ func (connection *Connection) DockerGetContainerId(containerName string) string 
 		// -> trying to get id from docker-compose
 
 		// copy connection because we need conn without docker usage (endless loop)
-		connectionClone := *connection
+		connectionClone := connection.Clone()
 		connectionClone.Docker = ""
 		connectionClone.Type  = "auto"
 
@@ -64,3 +65,30 @@ func (connection *Connection) DockerGetContainerId(containerName string) string 
 
 	return container
 }
+
+// Detect docker container id with docker-compose support
+func (connection *Connection) DockerGetEnvironment(containerId string) map[string]string {
+	ret := map[string]string{}
+
+	conn := connection.Clone()
+	conn.Docker = ""
+	conn.Type  = "auto"
+
+	cmd := shell.Cmd(connection.CommandBuilder("docker", "inspect", "-f", "{{range .Config.Env}}{{println .}}{{end}}", containerId)...)
+	envList := cmd.Run().Stdout.String()
+
+	scanner := bufio.NewScanner(strings.NewReader(envList))
+	for scanner.Scan() {
+		line := scanner.Text()
+		split := strings.SplitN(line, "=", 2)
+
+		if len(split) == 2 {
+			varName, varValue := split[0], split[1]
+
+			ret[varName] = varValue
+		}
+	}
+
+	return ret
+}
+
