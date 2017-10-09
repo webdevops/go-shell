@@ -13,8 +13,35 @@ while remaining idiomatic to Go.
  * Template compatible "last arg" piping `Cmd(..., Cmd(..., Cmd(...)))`
  * Optional trace output mode like `set +x`
  * Similar variadic functions for paths and path templates
+ * CommandBuilder for creating command using SSH, Docker or Docker over SSH
 
-## Examples
+## Docker support (commandbuilder)
+
+Running commands inside docker containers can be used by the `CommandBuilder` (see examples below).
+The variable `connection.Docker` has to set to the docker container id or the following schema has to be used:
+
+*CONTAINER* is the name of the docker-compose container.
+
+| DSN style configuration                                             | Description                                                                                            |
+|:--------------------------------------------------------------------|:-------------------------------------------------------------------------------------------------------|
+| ``compose:CONTAINER``                                               | Lookup container id using docker-compose in current directory                                          |
+| ``compose:CONTAINER;path=/path/to/project``                         | Lookup container id using docker-compose in `/path/to/project` directory                               |
+| ``compose:CONTAINER;path=/path/to/project;file=custom-compose-yml`` | Lookup container id using docker-compose in `/path/to/project` directory and `custom-compose.yml` file |
+| ``compose:CONTAINER;project-name=foobar``                           | Lookup container id using docker-compose in current directory with project name `foobar`               |
+| ``compose:CONTAINER;host=example.com``                              | Lookup container id using docker-compose in current directory with docker host `example.com`           |
+| ``compose:CONTAINER;env[FOOBAR]=BARFOO``                            | Lookup container id using docker-compose in current directory with env var `FOOBAR` set to `BARFOO`    |
+
+| Query style configuration                                             | Description                                                                                            |
+|:----------------------------------------------------------------------|:-------------------------------------------------------------------------------------------------------|
+| ``compose://CONTAINER``                                               | Lookup container id using docker-compose in current directory                                          |
+| ``compose://CONTAINER?path=/path/to/project``                         | Lookup container id using docker-compose in `/path/to/project` directory                               |
+| ``compose://CONTAINER?path=/path/to/project&file=custom-compose-yml`` | Lookup container id using docker-compose in `/path/to/project` directory and `custom-compose.yml` file |
+| ``compose://CONTAINER?project-name=foobar``                           | Lookup container id using docker-compose in current directory with project name `foobar`               |
+| ``compose://CONTAINER?host=example.com``                              | Lookup container id using docker-compose in current directory with docker host `example.com`           |
+| ``compose://CONTAINER?env[FOOBAR]=BARFOO``                            | Lookup container id using docker-compose in current directory with env var `FOOBAR` set to `BARFOO`    |
+
+
+## Examples `shell`
 
 ```go
 import (
@@ -69,6 +96,66 @@ func main() {
   err = rm("/bar")
   // handle err
   out, _ := echo("Done!")
+}
+```
+
+## Examples `commandbuilder`
+
+```go
+package main
+
+import (
+	"fmt"
+	"github.com/webdevops/go-shell"
+	"github.com/webdevops/go-shell/commandbuilder"
+)
+
+func main() {
+	var cmd *shell.Command
+	var connection commandbuilder.Connection
+
+	// ------------------------------------------
+	// local execution
+	connection = commandbuilder.Connection{}
+		
+	cmd = shell.Cmd(connection.CommandBuilder("date")...)
+	cmd.Run()
+
+	// ------------------------------------------
+	// SSH access
+	connection = commandbuilder.Connection{}
+	connection.Hostname = "example.com"
+	connection.User = "foobar"
+	
+	cmd = shell.Cmd(connection.CommandBuilder("date")...)
+	fmt.Println("LOCAL: " + cmd.Run().Stdout.String())
+	
+	
+	// ------------------------------------------
+	// Docker execution
+	connection = commandbuilder.Connection{}
+	connection.Docker = "32ceb49d2958"
+	
+	cmd = shell.Cmd(connection.CommandBuilder("date")...)
+	fmt.Println("DOCKER: " + cmd.Run().Stdout.String())
+
+	// ------------------------------------------
+	// Docker (lookup via docker-compose) execution
+	connection = commandbuilder.Connection{}
+	connection.Docker = "compose:mysql;path=/path/to/project;file=custom-compose-yml"
+
+	cmd = shell.Cmd(connection.CommandBuilder("date")...)
+	fmt.Println("DOCKER/COMPOSE: " + cmd.Run().Stdout.String())
+
+	// ------------------------------------------
+	// Docker on remote host via SSH execution
+	connection = commandbuilder.Connection{}
+	connection.Hostname = "example.com"
+	connection.User = "foobar"
+	connection.Docker = "32ceb49d2958"
+	
+	cmd = shell.Cmd(connection.CommandBuilder("date")...)
+	fmt.Println("DOCKERviaSSH: " + cmd.Run().Stdout.String())
 }
 ```
 
