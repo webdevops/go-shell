@@ -26,7 +26,7 @@ The variable `connection.Docker` has to set to the docker container id or the fo
 |:--------------------------------------------------------------------|:-------------------------------------------------------------------------------------------------------|
 | ``compose:CONTAINER``                                               | Lookup container id using docker-compose in current directory                                          |
 | ``compose:CONTAINER;path=/path/to/project``                         | Lookup container id using docker-compose in `/path/to/project` directory                               |
-| ``compose:CONTAINER;path=/path/to/project;file=custom-compose-yml`` | Lookup container id using docker-compose in `/path/to/project` directory and `custom-compose.yml` file |
+| ``compose:CONTAINER;path=/path/to/project;file=custom-compose.yml`` | Lookup container id using docker-compose in `/path/to/project` directory and `custom-compose.yml` file |
 | ``compose:CONTAINER;project-name=foobar``                           | Lookup container id using docker-compose in current directory with project name `foobar`               |
 | ``compose:CONTAINER;host=example.com``                              | Lookup container id using docker-compose in current directory with docker host `example.com`           |
 | ``compose:CONTAINER;env[FOOBAR]=BARFOO``                            | Lookup container id using docker-compose in current directory with env var `FOOBAR` set to `BARFOO`    |
@@ -35,7 +35,7 @@ The variable `connection.Docker` has to set to the docker container id or the fo
 |:----------------------------------------------------------------------|:-------------------------------------------------------------------------------------------------------|
 | ``compose://CONTAINER``                                               | Lookup container id using docker-compose in current directory                                          |
 | ``compose://CONTAINER?path=/path/to/project``                         | Lookup container id using docker-compose in `/path/to/project` directory                               |
-| ``compose://CONTAINER?path=/path/to/project&file=custom-compose-yml`` | Lookup container id using docker-compose in `/path/to/project` directory and `custom-compose.yml` file |
+| ``compose://CONTAINER?path=/path/to/project&file=custom-compose.yml`` | Lookup container id using docker-compose in `/path/to/project` directory and `custom-compose.yml` file |
 | ``compose://CONTAINER?project-name=foobar``                           | Lookup container id using docker-compose in current directory with project name `foobar`               |
 | ``compose://CONTAINER?host=example.com``                              | Lookup container id using docker-compose in current directory with docker host `example.com`           |
 | ``compose://CONTAINER?env[FOOBAR]=BARFOO``                            | Lookup container id using docker-compose in current directory with env var `FOOBAR` set to `BARFOO`    |
