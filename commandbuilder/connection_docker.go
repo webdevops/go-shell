@@ -4,8 +4,6 @@ import (
 	"strings"
 	"fmt"
 	"bufio"
-	"regexp"
-	"net/url"
 	"github.com/webdevops/go-shell"
 )
 
@@ -17,10 +15,6 @@ type dockerConfiguration struct {
 	Options map[string]string
 	Environment map[string]string
 }
-
-var dockerDsnRegexp = regexp.MustCompile("^(?P<schema>[a-zA-Z0-9]+):(?P<container>[^/;]+)(?P<params>;[^/;]+.*)")
-var dockerUrlRegexp = regexp.MustCompile("^[a-zA-Z0-9]+://[^/]+")
-var dockerOptionEnvSetting = regexp.MustCompile("^env\\[(?P<item>[a-zA-Z0-9]+)\\]$")
 
 // Create dockerized command
 func (connection *Connection) DockerCommandBuilder(cmd string, args ...string) []interface{} {
@@ -45,85 +39,21 @@ func (connection *Connection) DockerGetContainerId(containerName string) string 
 	if val, ok := containerCache[cacheKey]; ok {
 		// use cached container id
 		container = val
-	} else if dockerDsnRegexp.MatchString(containerName) {
-		container = connection.dockerContainerIdFromDsn(containerName)
-	} else if dockerUrlRegexp.MatchString(containerName) {
-		container = connection.dockerContainerIdFromUrl(containerName)
 	} else {
-		// normal docker
-		container = containerName
+		containerInfo, err := ParseArgument(containerName)
+		if err != nil {
+			panic(err)
+		}
+		container = connection.queryDockerContainerId(containerInfo)
 	}
-
+	
 	// cache value
 	containerCache[cacheKey] = container
 
 	return container
 }
 
-func (connection *Connection) dockerContainerIdFromDsn(containerName string) string {
-	docker := dockerConfiguration{}
-
-	match := dockerDsnRegexp.FindStringSubmatch(containerName)
-	docker.Scheme = match[1]
-	docker.Container = match[2]
-	docker.Options = map[string]string{}
-	docker.Environment = map[string]string{}
-
-	dockerParams := match[3]
-	dockerParams = strings.Trim(dockerParams, ";")
-	paramRawList := strings.Split(dockerParams, ";")
-	for _, val := range paramRawList {
-		split := strings.SplitN(val, "=", 2)
-		if len(split) == 2 {
-			varName := split[0]
-			varValue := split[1]
-			if dockerOptionEnvSetting.MatchString(varName) {
-				// env value
-				match := dockerOptionEnvSetting.FindStringSubmatch(varName)
-				envName := match[1]
-				docker.Environment[envName] = varValue
-			} else {
-				// Default option
-				docker.Options[varName] = varValue
-			}
-		}
-	}
-
-	return connection.queryDockerContainerId(docker)
-}
-
-func (connection *Connection) dockerContainerIdFromUrl(containerName string) string {
-	docker := dockerConfiguration{}
-
-	// parse url
-	dockerUrl, err := url.Parse(containerName)
-	if err != nil {
-		panic(err)
-	}
-
-	docker.Scheme = dockerUrl.Scheme
-	docker.Container = dockerUrl.Hostname()
-	docker.Options = map[string]string{}
-	docker.Environment = map[string]string{}
-
-	queryVarList := dockerUrl.Query()
-
-	for varName, varValue := range queryVarList {
-		if dockerOptionEnvSetting.MatchString(varName) {
-			// env value
-			match := dockerOptionEnvSetting.FindStringSubmatch(varName)
-			envName := match[1]
-			docker.Environment[envName] = varValue[0]
-		} else {
-			// Default option
-			docker.Options[varName] = varValue[0]
-		}
-	}
-
-	return connection.queryDockerContainerId(docker)
-}
-
-func (connection *Connection) queryDockerContainerId(docker dockerConfiguration) string {
+func (connection *Connection) queryDockerContainerId(docker Argument) string {
 	ret := ""
 
 	// copy connection because we need conn without docker usage (endless loop)
@@ -142,41 +72,29 @@ func (connection *Connection) queryDockerContainerId(docker dockerConfiguration)
 		// -> trying to get id from docker-compose
 		dockerComposeArgs := []string{"--no-ansi"}
 
-		// set file
-		if val, ok := docker.Options["project-name"]; ok {
-			dockerComposeArgs = append(dockerComposeArgs, "--project-name", shell.Quote(val))
-		}
-
-		// set file
-		if val, ok := docker.Options["file"]; ok {
-			dockerComposeArgs = append(dockerComposeArgs, "--file", shell.Quote(val))
-		}
-
-		// set host
-		if val, ok := docker.Options["host"]; ok {
-			dockerComposeArgs = append(dockerComposeArgs, "--host", shell.Quote(val))
-		}
-
-		// use path/project-dir
+		// map path to project-directory
 		if val, ok := docker.Options["path"]; ok {
-			dockerComposeArgs = append(dockerComposeArgs, "--project-directory", shell.Quote(val))
-		} else if val, ok := docker.Options["project-directory"]; ok {
-			dockerComposeArgs = append(dockerComposeArgs, "--project-directory", shell.Quote(val))
+			docker.Options["project-directory"] = val
+			delete(docker.Options, "path")
+		}
+
+		for varName, varValue := range docker.Options {
+			dockerComposeArgs = append(dockerComposeArgs, "--" + varName, shell.Quote(varValue))
 		}
 
 		// docker-compose command with container name
-		dockerComposeArgs = append(dockerComposeArgs, "ps", "-q", shell.Quote(docker.Container))
+		dockerComposeArgs = append(dockerComposeArgs, "ps", "-q", shell.Quote(docker.Host))
 
 		// query container id from docker-compose
 		cmd := shell.Cmd(connectionClone.RawCommandBuilder("docker-compose", dockerComposeArgs...)...).Run()
 		ret = strings.TrimSpace(cmd.Stdout.String())
 
 		if ret == "" {
-			panic(fmt.Sprintf("Container \"%s\" not found empty", docker.Container))
+			panic(fmt.Sprintf("Container \"%s\" not found empty", docker.Host))
 		}
 
 	default:
-		panic(fmt.Sprintf("Docker scheme \"%s\" is not supported for: %s", docker.Scheme, docker.Container))
+		panic(fmt.Sprintf("Docker scheme \"%s\" is not supported for: %s", docker.Scheme, docker.Host))
 	}
 
 	return ret
