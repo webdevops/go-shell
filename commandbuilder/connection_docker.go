@@ -93,6 +93,10 @@ func (connection *Connection) queryDockerContainerId(docker Argument) string {
 			panic(fmt.Sprintf("Container \"%s\" not found empty", docker.Host))
 		}
 
+	case "":
+		// docker container id as passed value?
+		ret = docker.Value
+
 	default:
 		panic(fmt.Sprintf("Docker scheme \"%s\" is not supported for: %s", docker.Scheme, docker.Host))
 	}
