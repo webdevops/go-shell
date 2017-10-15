@@ -28,14 +28,12 @@ func ParseArgument(value string) (Argument, error) {
 	argument.simple = true
 
 	if argParserDsn.MatchString(value) {
-		fmt.Println("DSN")
 		err := argument.ParseDsn()
 		if err != nil {
 			return argument, err
 		}
 		argument.simple = false
 	} else if argParserUrl.MatchString(value) {
-		fmt.Println("URL")
 		err := argument.ParseUrl()
 		if err != nil {
 			return argument, err
