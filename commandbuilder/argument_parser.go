@@ -8,8 +8,8 @@ import (
 	"errors"
 )
 
-var argParserDsn = regexp.MustCompile("^(?P<schema>[a-zA-Z0-9]+):(?P<container>[^/;]+)(?P<params>;[^/;]+.*)?$")
-var argParserUrl = regexp.MustCompile("^[a-zA-Z0-9]+://[^/]+")
+var argParserDsn = regexp.MustCompile("^(?P<schema>[-_a-zA-Z0-9]+):(?P<container>[^/;]+)(?P<params>;[^/;]+.*)?$")
+var argParserUrl = regexp.MustCompile("^[-_a-zA-Z0-9]+://[^/]+.*$")
 var argParserEnv = regexp.MustCompile("^env\\[(?P<item>[a-zA-Z0-9]+)\\]$")
 
 type Argument struct {
@@ -28,12 +28,14 @@ func ParseArgument(value string) (Argument, error) {
 	argument.simple = true
 
 	if argParserDsn.MatchString(value) {
+		fmt.Println("DSN")
 		err := argument.ParseDsn()
 		if err != nil {
 			return argument, err
 		}
 		argument.simple = false
 	} else if argParserUrl.MatchString(value) {
+		fmt.Println("URL")
 		err := argument.ParseUrl()
 		if err != nil {
 			return argument, err
@@ -90,6 +92,9 @@ func (argument *Argument) ParseUrl() error {
 	if err != nil {
 		return err
 	}
+
+	// copy parsed url informations into argument.URL
+	argument.URL = *parsedUrl
 
 	for varName, varValue := range parsedUrl.Query() {
 		if argParserEnv.MatchString(varName) {
