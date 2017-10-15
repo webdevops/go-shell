@@ -99,6 +99,33 @@ func main() {
 }
 ```
 
+Error recovery
+```go
+package main
+
+import (
+	"os"
+	"fmt"
+	"github.com/webdevops/go-shell"
+)
+
+func main() {
+	defer func() {
+		if r := recover(); r != nil {
+			message := fmt.Sprintf("%v", r)
+
+			if obj, ok := r.(*shell.Process); ok {
+				message = obj.Debug()
+			}
+			fmt.Println(message)
+			os.Exit(255)
+		}
+	}()
+
+	shell.Cmd("exit", "2").Run()
+}
+```
+
 ## Examples `commandbuilder`
 
 ```go
