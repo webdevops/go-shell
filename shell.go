@@ -289,7 +289,7 @@ type Process struct {
 }
 
 // Create human readable representation of process status
-func (p *Process) String() string {
+func (p *Process) Debug() string {
 	msg := ""
 
 	stderr := strings.Replace(p.Stderr.String(), "\n", "\n           ", -1)
@@ -306,6 +306,10 @@ func (p *Process) String() string {
 	msg += "\n"
 
 	return msg
+}
+
+func (p *Process) String() string {
+	return strings.Trim(p.Stdout.String(), "\n")
 }
 
 func (p *Process) Bytes() []byte {
