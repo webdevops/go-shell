@@ -6,86 +6,6 @@ import (
 	"github.com/webdevops/go-shell"
 )
 
-var (
-	// Default SSH options
-	ConnectionSshArguments = []string{"-oBatchMode=yes -oPasswordAuthentication=no"}
-
-	// Default Docker options
-	ConnectionDockerArguments = []string{"exec", "-i"}
-)
-
-type Connection struct {
-	// Type of command
-	// local: for local execution
-	// ssh: for execution using ssh
-	// docker: for execution using a docker container
-	Type string
-
-	// Hostname for ssh execution
-	Hostname string
-
-	// Username for ssh execution
-	User string
-
-	// Password for ssh execution
-	Password string
-
-	// Docker container ID for execution inside docker container
-	// compose:name for automatic docker-compose lookup (docker-compose.yml must be in working directory)
-	Docker string
-
-	// Working directory for eg. ssh
-	WorkDir string
-
-	// Environment variables
-	Environment map[string]string
-}
-
-// Clone connection
-func (connection *Connection) Clone() (Connection) {
-	clone := *connection
-
-	if clone.Environment == nil {
-		clone.Environment = map[string]string{}
-	}
-
-	return clone
-}
-
-func (connection *Connection) IsEmpty() bool {
-	ret := true
-
-	if connection.Type != "" {
-		ret = false
-	}
-
-	if connection.Hostname != "" {
-		ret = false
-	}
-
-	if connection.User != "" {
-		ret = false
-	}
-
-	if connection.Password != "" {
-		ret = false
-	}
-
-	if connection.Docker != "" {
-		ret = false
-	}
-
-	if connection.WorkDir != "" {
-		ret = false
-	}
-
-	if len(connection.Environment) > 0 {
-		ret = false
-	}
-
-	return ret
-}
-
 // Build command for shell.Cmd usage
 // will automatically check if SSH'ed or docker exec will be used
 func (connection *Connection) CommandBuilder(command string, args ...string) []interface{} {
@@ -100,7 +20,7 @@ func (connection *Connection) RawCommandBuilder(command string, args ...string) 
 
 	// if workdir is set
 	// use shell'ed command builder
-	if connection.WorkDir != "" || len(connection.Environment) >= 1 {
+	if connection.Workdir != "" || !connection.Environment.IsEmpty() {
 		shellArgs := []string{command}
 		shellArgs = append(shellArgs, args...)
 		return connection.RawShellCommandBuilder(shellArgs...)
@@ -143,14 +63,14 @@ func (connection *Connection) RawShellCommandBuilder(args ...string) []interface
 
 	inlineCommand := strings.Join(inlineArgs, " ")
 
-	if connection.WorkDir != "" {
+	if connection.Workdir != "" {
 		// prepend cd in front of command to change work dir
-		inlineCommand = fmt.Sprintf("cd %s;%s", shell.Quote(connection.WorkDir), inlineCommand)
+		inlineCommand = fmt.Sprintf("cd %s;%s", shell.Quote(connection.Workdir), inlineCommand)
 	}
 
-	if len(connection.Environment) > 0 {
+	if !connection.Environment.IsEmpty() {
 		envList := []string{}
-		for envName, envValue := range connection.Environment {
+		for envName, envValue := range connection.Environment.GetMap() {
 			envList = append(envList, fmt.Sprintf("%s=%s", envName, shell.Quote(envValue)))
 		}
 		inlineCommand = fmt.Sprintf("export %s;%s", strings.Join(envList, " "), inlineCommand)
@@ -186,11 +106,11 @@ func (connection *Connection) GetType() string {
 	if (connection.Type == "") || (connection.Type == "auto") {
 		connection.Type = "local"
 
-		if (connection.Docker != "") && connection.Hostname != "" {
+		if (!connection.Docker.IsEmpty()) && (!connection.Ssh.IsEmpty()) {
 			connection.Type = "ssh+docker"
-		} else if connection.Docker != "" {
+		} else if ! connection.Docker.IsEmpty() {
 			connection.Type = "docker"
-		} else if connection.Hostname != "" {
+		} else if ! connection.Ssh.IsEmpty() {
 			connection.Type = "ssh"
 		}
 	}
@@ -209,25 +129,4 @@ func (connection *Connection) GetType() string {
 	}
 
 	return connType
-}
-
-// Create human readable string representation of command
-func (connection *Connection) String() string {
-	var parts []string
-
-	connType := connection.GetType()
-	parts = append(parts, fmt.Sprintf("Type:%s", connType))
-
-	switch connType {
-	case "ssh":
-		parts = append(parts, fmt.Sprintf("SSH:%s", connection.SshConnectionHostnameString()))
-	case "docker":
-		parts = append(parts, fmt.Sprintf("Docker:%s", connection.Docker))
-	case "ssh+docker":
-		parts = append(parts, fmt.Sprintf("SSH:%s", connection.SshConnectionHostnameString()))
-		parts = append(parts, fmt.Sprintf("Docker:%s", connection.Docker))
-	default:
-	}
-
-	return fmt.Sprintf("Connection[%s]", strings.Join(parts[:]," "))
 }

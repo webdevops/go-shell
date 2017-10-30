@@ -6,50 +6,121 @@ import (
 	"net/url"
 	"fmt"
 	"errors"
+	"github.com/mohae/deepcopy"
 )
 
-var argParserDsn = regexp.MustCompile("^(?P<schema>[-_a-zA-Z0-9]+):(?P<container>[^/;]+)(?P<params>;[^/;]+.*)?$")
+var argParserDsn = regexp.MustCompile("^(?P<schema>[-_a-zA-Z0-9]+):((?P<hostname>[^/;=]+)(?P<param1>;[^/;]+.*)*|(?P<param2>[^=]+=[^;]+)(?P<param3>;[^/;]+.*)*)$")
 var argParserUrl = regexp.MustCompile("^[-_a-zA-Z0-9]+://[^/]+.*$")
+var argParserUserHost = regexp.MustCompile("^(?P<user>[^@]+)@(?P<hostname>.+)$")
 var argParserEnv = regexp.MustCompile("^env\\[(?P<item>[a-zA-Z0-9]+)\\]$")
 
 type Argument struct {
-	url.URL
-	Value string
+	Scheme string
+	Hostname string
+	Port string
+	Username string
+	Password string
+	Raw string
 	Options map[string]string
 	Environment map[string]string
+	Workdir string
 	simple bool
 }
 
 func ParseArgument(value string) (Argument, error) {
 	argument := Argument{}
+	err := argument.Set(value)
+	return argument, err
+}
+
+
+func (argument *Argument) Clear() {
+	argument.Scheme = ""
+	argument.Hostname = ""
+	argument.Port = ""
+	argument.Username = ""
+	argument.Password = ""
+	argument.Raw = ""
 	argument.Options = map[string]string{}
 	argument.Environment = map[string]string{}
-	argument.Value = value
+	argument.Workdir = ""
+}
+
+func (argument *Argument) Set(value string) error {
+	argument.Clear()
+
+	argument.Options = map[string]string{}
+	argument.Environment = map[string]string{}
+	argument.Raw = value
 	argument.simple = true
 
-	if argParserDsn.MatchString(value) {
-		err := argument.ParseDsn()
-		if err != nil {
-			return argument, err
-		}
-		argument.simple = false
-	} else if argParserUrl.MatchString(value) {
+	if argParserUrl.MatchString(value) {
 		err := argument.ParseUrl()
 		if err != nil {
-			return argument, err
+			return err
 		}
 		argument.simple = false
+	} else if argParserDsn.MatchString(value) {
+		err := argument.ParseDsn()
+		if err != nil {
+			return err
+		}
+		argument.simple = false
+	} else if argParserUserHost.MatchString(value) {
+		err := argument.ParseUserHost()
+		if err != nil {
+			return err
+		}
+		argument.simple = false
+	} else {
+		argument.Hostname = value
+		argument.simple = true
 	}
 
-	return argument, nil
+	return nil
+}
+// Clone connection
+func (argument *Argument) Clone() (*Argument) {
+	clone := deepcopy.Copy(argument).(*Argument)
+
+	if clone.Options == nil {
+		clone.Options = map[string]string{}
+	}
+
+	if clone.Environment == nil {
+		clone.Environment = map[string]string{}
+	}
+
+	return clone
+}
+
+func (argument *Argument) IsEmpty() bool {
+	if argument.Scheme != "" { return false }
+	if argument.Hostname != "" { return false }
+	if argument.Port != "" { return false }
+	if argument.Username != "" { return false }
+	if argument.Password != "" { return false }
+	if argument.Raw != "" { return false }
+	if len(argument.Options) >= 1 { return false }
+	if len(argument.Environment) >= 1 { return false }
+	if argument.Workdir != "" { return false }
+	return true
 }
 
 func (argument *Argument) ParseDsn() error {
-	match := argParserDsn.FindStringSubmatch(argument.Value)
-	argument.Scheme = match[1]
-	argument.Host = match[2]
+	// parse string with regex
+	match := argParserDsn.FindStringSubmatch(argument.Raw)
+	result := make(map[string]string)
+	for i, name := range argParserDsn.SubexpNames() {
+		if i != 0 { result[name] = match[i] }
+	}
 
-	paramString := match[3]
+	// assign default result
+	argument.Scheme = result["schema"]
+	argument.Hostname = result["hostname"]
+
+	// build param string and parse it
+	paramString := result["param1"] + ";" + result["param2"] + ";" + result["param3"]
 	paramString = strings.Trim(paramString, ";")
 	paramList := strings.Split(paramString, ";")
 	for _, val := range paramList {
@@ -64,21 +135,26 @@ func (argument *Argument) ParseDsn() error {
 				envName := match[1]
 				argument.Environment[envName] = varValue
 			} else {
-				// Default option
-				argument.Options[varName] = varValue
+				switch varName {
+				case "host":
+					fallthrough
+				case "hostname":
+					argument.Hostname = varValue
+				case "port":
+					argument.Port = varValue
+				case "user":
+					fallthrough
+				case "username":
+					argument.Username = varValue
+				case "password":
+					argument.Password = varValue
+				case "workdir":
+					argument.Workdir = varValue
+				default:
+					argument.Options[varName] = varValue
+				}
 			}
 		}
-	}
-
-
-	// Init user
-	if argument.HasOption("username") && argument.HasOption("password") {
-		username, _ := argument.GetOption("username")
-		password, _ := argument.GetOption("password")
-		argument.User = url.UserPassword(username, password)
-	} else if argument.HasOption("username") {
-		username, _ := argument.GetOption("username")
-		argument.User = url.User(username)
 	}
 
 	return nil
@@ -86,25 +162,55 @@ func (argument *Argument) ParseDsn() error {
 
 func (argument *Argument) ParseUrl() error {
 	// parse url
-	parsedUrl, err := url.Parse(argument.Value)
+	url, err := url.Parse(argument.Raw)
 	if err != nil {
 		return err
 	}
 
-	// copy parsed url informations into argument.URL
-	argument.URL = *parsedUrl
+	// copy parsed url informations
+	argument.Scheme = url.Scheme
+	argument.Hostname = url.Hostname()
+	argument.Port = url.Port()
 
-	for varName, varValue := range parsedUrl.Query() {
+	if url.User != nil && url.User.Username() != "" {
+		argument.Username = url.User.Username()
+
+		if val, ok := url.User.Password(); ok {
+			argument.Password = val
+		}
+	}
+
+	for varName, varValue := range url.Query() {
 		if argParserEnv.MatchString(varName) {
 			// env value
 			match := argParserEnv.FindStringSubmatch(varName)
 			envName := match[1]
 			argument.Environment[envName] = varValue[0]
 		} else {
-			// Default option
-			argument.Options[varName] = varValue[0]
+			switch varName {
+			case "workdir":
+				argument.Workdir = varValue[0]
+			default:
+				argument.Options[varName] = varValue[0]
+			}
 		}
 	}
+
+	return nil
+}
+
+
+func (argument *Argument) ParseUserHost() error {
+	// parse string with regex
+	match := argParserUserHost.FindStringSubmatch(argument.Raw)
+	result := make(map[string]string)
+	for i, name := range argParserUserHost.SubexpNames() {
+		if i != 0 { result[name] = match[i] }
+	}
+
+	// assign default result
+	argument.Username = result["user"]
+	argument.Hostname = result["hostname"]
 
 	return nil
 }

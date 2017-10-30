@@ -22,10 +22,9 @@ func TestConnectionLocal(t *testing.T) {
 
 func TestConnectionSsh(t *testing.T) {
 	var cmd *shell.Command
-	conn := Connection{
-		Hostname: "example.com",
-		User: "barfoo",
-	}
+	conn := Connection{}
+	conn.Ssh.Hostname = "example.com"
+	conn.Ssh.Username = "barfoo"
 
 	cmd = shell.Cmd(conn.CommandBuilder("echo", "foobar")...)
 	if val := cmd.ToString(); val != "ssh -oBatchMode=yes -oPasswordAuthentication=no barfoo@example.com -- 'echo '\\''foobar'\\'''" {
@@ -40,9 +39,8 @@ func TestConnectionSsh(t *testing.T) {
 
 func TestConnectionDocker(t *testing.T) {
 	var cmd *shell.Command
-	conn := Connection{
-		Docker: "containerid",
-	}
+	conn := Connection{}
+	conn.Docker.Hostname = "containerid"
 
 	cmd = shell.Cmd(conn.CommandBuilder("echo", "foobar")...)
 	if val := cmd.ToString(); val != "docker exec -i containerid echo 'foobar'" {
@@ -58,11 +56,10 @@ func TestConnectionDocker(t *testing.T) {
 
 func TestConnectionSshDocker(t *testing.T) {
 	var cmd *shell.Command
-	conn := Connection{
-		Hostname: "example.com",
-		User: "barfoo",
-		Docker: "containerid",
-	}
+	conn := Connection{}
+	conn.Ssh.Hostname = "example.com"
+	conn.Ssh.Username = "barfoo"
+	conn.Docker.Hostname = "containerid"
 
 	cmd = shell.Cmd(conn.CommandBuilder("echo", "foobar")...)
 	if val := cmd.ToString(); val != "ssh -oBatchMode=yes -oPasswordAuthentication=no barfoo@example.com -- 'docker exec -i containerid echo '\\''foobar'\\'''" {

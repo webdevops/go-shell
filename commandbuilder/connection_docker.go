@@ -7,18 +7,14 @@ import (
 	"github.com/webdevops/go-shell"
 )
 
-var containerCache = map[string]string{}
-
-type dockerConfiguration struct {
-	Scheme string
-	Container string
-	Options map[string]string
-	Environment map[string]string
+// Checks if connection is using Docker
+func (connection *Connection) IsDocker() bool {
+	return !connection.Docker.IsEmpty()
 }
 
 // Create dockerized command
 func (connection *Connection) DockerCommandBuilder(cmd string, args ...string) []interface{} {
-	dockerArgs := append(ConnectionDockerArguments, connection.DockerGetContainerId(connection.Docker), cmd)
+	dockerArgs := append(ConnectionDockerArguments, connection.DockerGetContainerId(), cmd)
 	dockerArgs = append(dockerArgs, args...)
 
 	if connection.GetType() == "ssh+docker" {
@@ -31,41 +27,38 @@ func (connection *Connection) DockerCommandBuilder(cmd string, args ...string) [
 }
 
 // Detect docker container id with docker-compose support
-func (connection *Connection) DockerGetContainerId(containerName string) string {
+func (connection *Connection) DockerGetContainerId() string {
 	var container string
 
-	cacheKey := fmt.Sprintf("%s:%s", connection.Hostname, containerName)
+	cacheKey := fmt.Sprintf("%s:%s", connection.Docker.Scheme, connection.Docker.Hostname)
 
-	if val, ok := containerCache[cacheKey]; ok {
+	container = connection.queryDockerContainerId()
+	return container
+
+	if val, ok := connection.containerCache[cacheKey]; ok {
 		// use cached container id
 		container = val
 	} else {
-		containerInfo, err := ParseArgument(containerName)
-		if err != nil {
-			panic(err)
-		}
-		container = connection.queryDockerContainerId(containerInfo)
+		container = connection.queryDockerContainerId()
 	}
 	
 	// cache value
-	containerCache[cacheKey] = container
+	connection.containerCache[cacheKey] = container
 
 	return container
 }
 
-func (connection *Connection) queryDockerContainerId(docker Argument) string {
+func (connection *Connection) queryDockerContainerId() string {
 	ret := ""
 
 	// copy connection because we need conn without docker usage (endless loop)
 	connectionClone := connection.Clone()
-	connectionClone.Docker = ""
+	connectionClone.Docker.Clear()
 	connectionClone.Type = "auto"
 
-	for envName, envValue := range docker.Environment {
-		connectionClone.Environment[envName] = envValue
-	}
+	connectionClone.Environment.AddMap(connection.Docker.Environment)
 	
-	switch strings.ToLower(docker.Scheme) {
+	switch strings.ToLower(connection.Docker.Scheme) {
 	case "docker-compose":
 		fallthrough
 	case "compose":
@@ -73,46 +66,55 @@ func (connection *Connection) queryDockerContainerId(docker Argument) string {
 		dockerComposeArgs := []string{"--no-ansi"}
 
 		// map path to project-directory
-		if val, ok := docker.Options["path"]; ok {
-			docker.Options["project-directory"] = val
-			delete(docker.Options, "path")
+		if val, ok := connection.Docker.Options["path"]; ok {
+			connection.Docker.Options["project-directory"] = val
+			delete(connection.Docker.Options, "path")
 		}
 
-		for varName, varValue := range docker.Options {
+		for varName, varValue := range connection.Docker.Options {
 			dockerComposeArgs = append(dockerComposeArgs, "--" + varName, shell.Quote(varValue))
 		}
 
 		// docker-compose command with container name
-		dockerComposeArgs = append(dockerComposeArgs, "ps", "-q", shell.Quote(docker.Host))
+		dockerComposeArgs = append(dockerComposeArgs, "ps", "-q", shell.Quote(connection.Docker.Hostname))
 
 		// query container id from docker-compose
 		cmd := shell.Cmd(connectionClone.RawCommandBuilder("docker-compose", dockerComposeArgs...)...).Run()
 		ret = strings.TrimSpace(cmd.Stdout.String())
 
 		if ret == "" {
-			panic(fmt.Sprintf("Container \"%s\" not found empty", docker.Host))
+			panic(fmt.Sprintf("Container \"%s\" not found empty", connection.Docker.Hostname))
 		}
 
+	case "docker":
+		fallthrough
 	case "":
-		// docker container id as passed value?
-		ret = docker.Value
+		if connection.Docker.Hostname != "" {
+			ret = connection.Docker.Hostname
+		} else {
+			// only docker container id as passed value?
+			ret = connection.Docker.Raw
+		}
 
 	default:
-		panic(fmt.Sprintf("Docker scheme \"%s\" is not supported for: %s", docker.Scheme, docker.Host))
+		panic(fmt.Sprintf("Docker scheme \"%s\" is not supported for: %s", connection.Docker.Scheme, connection.Docker.Hostname))
 	}
 
 	return ret
 }
 
 // Detect docker container id with docker-compose support
-func (connection *Connection) DockerGetEnvironment(containerId string) map[string]string {
+func (connection *Connection) DockerGetEnvironment() map[string]string {
 	ret := map[string]string{}
 
-	conn := connection.Clone()
-	conn.Docker = ""
-	conn.Type  = "auto"
+	containerId := connection.DockerGetContainerId()
 
-	cmd := shell.Cmd(connection.CommandBuilder("docker", "inspect", "-f", "{{range .Config.Env}}{{println .}}{{end}}", containerId)...)
+	// copy connection because we need conn without docker usage (endless loop)
+	connectionClone := connection.Clone()
+	connectionClone.Docker.Clear()
+	connectionClone.Type = "auto"
+
+	cmd := shell.Cmd(connectionClone.CommandBuilder("docker", "inspect", "-f", "{{range .Config.Env}}{{println .}}{{end}}", containerId)...)
 	envList := cmd.Run().Stdout.String()
 
 	scanner := bufio.NewScanner(strings.NewReader(envList))

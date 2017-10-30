@@ -6,6 +6,11 @@ import (
 	"github.com/webdevops/go-shell"
 )
 
+// Checks if connection is using SSH
+func (connection *Connection) IsSsh() bool {
+	return !connection.Ssh.IsEmpty()
+}
+
 // Create SSH'ed command
 func (connection *Connection) SshCommandBuilder(command string, args ...string) []interface{} {
 	remoteCmdParts := []string{command}
@@ -21,9 +26,9 @@ func (connection *Connection) SshCommandBuilder(command string, args ...string) 
 
 // Build ssh connection string (eg. user@hostname)
 func (connection *Connection) SshConnectionHostnameString() string {
-	if connection.User != "" {
-		return fmt.Sprintf("%s@%s", connection.User, connection.Hostname)
+	if connection.Ssh.Username != "" {
+		return fmt.Sprintf("%s@%s", connection.Ssh.Username, connection.Ssh.Hostname)
 	} else {
-		return connection.Hostname
+		return connection.Ssh.Hostname
 	}
 }

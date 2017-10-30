@@ -151,8 +151,7 @@ func main() {
 	// ------------------------------------------
 	// SSH access
 	connection = commandbuilder.Connection{}
-	connection.Hostname = "example.com"
-	connection.User = "foobar"
+	connection.Ssh.Set("foobar@example.com")
 	
 	cmd = shell.Cmd(connection.CommandBuilder("date")...)
 	fmt.Println("LOCAL: " + cmd.Run().Stdout.String())
@@ -161,7 +160,7 @@ func main() {
 	// ------------------------------------------
 	// Docker execution
 	connection = commandbuilder.Connection{}
-	connection.Docker = "32ceb49d2958"
+	connection.Docker.Set("32ceb49d2958")
 	
 	cmd = shell.Cmd(connection.CommandBuilder("date")...)
 	fmt.Println("DOCKER: " + cmd.Run().Stdout.String())
@@ -169,20 +168,19 @@ func main() {
 	// ------------------------------------------
 	// Docker (lookup via docker-compose) execution
 	connection = commandbuilder.Connection{}
-	connection.Docker = "compose:mysql;path=/path/to/project;file=custom-compose-yml"
+	connection.Docker.Set("compose:mysql;path=/path/to/project;file=custom-compose-yml")
 
 	cmd = shell.Cmd(connection.CommandBuilder("date")...)
-	fmt.Println("DOCKER/COMPOSE: " + cmd.Run().Stdout.String())
+	fmt.Println("DOCKER with COMPOSE: " + cmd.Run().Stdout.String())
 
 	// ------------------------------------------
 	// Docker on remote host via SSH execution
 	connection = commandbuilder.Connection{}
-	connection.Hostname = "example.com"
-	connection.User = "foobar"
-	connection.Docker = "32ceb49d2958"
+	connection.Ssh.Set("foobar@example.com")
+	connection.Docker.Set("32ceb49d2958")
 	
 	cmd = shell.Cmd(connection.CommandBuilder("date")...)
-	fmt.Println("DOCKERviaSSH: " + cmd.Run().Stdout.String())
+	fmt.Println("DOCKER via SSH: " + cmd.Run().Stdout.String())
 }
 ```
 
