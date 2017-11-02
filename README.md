@@ -1,5 +1,9 @@
 # go-shell
 
+[![GitHub release](https://img.shields.io/github/release/webdevops/go-shell.svg)](https://github.com/webdevops/go-shell/releases)
+[![license](https://img.shields.io/github/license/webdevops/go-shell.svg)](https://github.com/webdevops/go-shell/blob/master/LICENSE)
+[![Build Status](https://travis-ci.org/webdevops/go-shell.svg?branch=master)](https://travis-ci.org/webdevops/go-shell)
+
 Library to write "shelling out" Go code more shell-like,
 while remaining idiomatic to Go.
 
