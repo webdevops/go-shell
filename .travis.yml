@@ -4,5 +4,5 @@ go:
   - 1.8
   - tip
 install:
-  - go get
+  - go get github.com/mohae/deepcopy
 script: make test
